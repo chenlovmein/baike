@@ -40,6 +40,12 @@ export const DEFAULT_SITES: Site[] = [
     encoding: 'utf-8',
     enabled: true,
   },
+  {
+    name: '萌娘百科',
+    urlTemplate: 'https://mzh.moegirl.org.cn/%s',
+    encoding: 'utf-8',
+    enabled: true,
+  },
 ]
 
 /**

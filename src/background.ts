@@ -70,6 +70,22 @@ function siteMenuId(index: number): string {
   return `baike-site-${index}`
 }
 
+/** 一级菜单标题里预览选中文字的最大字符数，超出则截断加省略号，避免菜单被撑得过宽 */
+const MAX_MENU_PREVIEW_LENGTH = 8
+
+/**
+ * 把选中的原始文字清洗后截断，用于一级菜单标题里的预览
+ * @param raw contextMenus.onShown 事件里的 info.selectionText
+ * @returns 截断后的预览文本，例如选中“谷歌浏览器是一个工具” -> “谷歌浏览器是一个工...”
+ */
+function truncatePreview(raw: string | undefined): string {
+  if (!raw) return ''
+  const collapsed = raw.replace(/\s+/g, ' ').trim()
+  if (collapsed.length === 0) return ''
+  if (collapsed.length <= MAX_MENU_PREVIEW_LENGTH) return collapsed
+  return collapsed.slice(0, MAX_MENU_PREVIEW_LENGTH) + '...'
+}
+
 // ---------------------- 菜单构建 ----------------------
 
 /**
@@ -132,8 +148,8 @@ async function doRebuildMenus(): Promise<void> {
       {
         id: siteMenuId(i),
         parentId: ROOT_MENU_ID,
-        // %s 在这里会被 Chrome 替换为实际选中的文字（Chrome 菜单标题的原生占位符）
-        title: `${site.name}: %s`,
+        // 二级菜单只显示百科名，选中文字的预览放在一级菜单标题里
+        title: site.name,
         contexts: ['selection'],
       },
       () => {
@@ -184,6 +200,48 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (!(STORAGE_KEY_SITES in changes)) return
   rebuildMenus()
 })
+
+/**
+ * 菜单即将展开时触发：把当前选中的文字（截断预览）放进一级菜单标题
+ * - rebuildMenus 创建菜单时还没有选中文字，只能创建静态标题“百科查询”
+ * - onShown 在每次右键展开菜单的瞬间触发，能拿到 info.selectionText，此时动态 update 标题
+ * - 选中文字为空时不更新（菜单本身 contexts:['selection'] 也不会显示，这里仅做防御）
+ *
+ * 注：chrome.contextMenus.onShown 是 Chrome 116+ 引入的 API，部分 @types/chrome 版本未声明其类型，
+ *     这里用类型断言补充最小类型，运行时该 API 存在。
+ */
+/**
+ * 菜单即将展开时触发：把当前选中的文字（截断预览）放进一级菜单标题
+ * - rebuildMenus 创建菜单时还没有选中文字，只能创建静态标题“百科查询”
+ * - onShown 在每次右键展开菜单的瞬间触发，能拿到 info.selectionText，此时动态 update 标题
+ * - 选中文字为空时不更新（菜单本身 contexts:['selection'] 也不会显示，这里仅做防御）
+ *
+ * 注：chrome.contextMenus.onShown 是 Chrome 116+ 引入的 API，旧版 Chrome 不存在该属性。
+ *     类型上用 onShown? 标记可选，运行时再判断是否存在，避免 SW 加载时直接崩溃。
+ *     不支持时菜单标题保持静态“百科查询”，查询功能本身不受影响。
+ */
+const onShown = (
+  chrome.contextMenus as typeof chrome.contextMenus & {
+    onShown?: chrome.events.Event<(info: chrome.contextMenus.OnClickData) => void>
+  }
+).onShown
+if (onShown) {
+  onShown.addListener((info) => {
+    const preview = truncatePreview(info.selectionText)
+    // 没有选中文字时把标题重置为纯“百科查询”，避免残留上次的预览
+    const title = preview ? `百科查询(${preview})` : '百科查询'
+    chrome.contextMenus.update(
+      ROOT_MENU_ID,
+      { title },
+      () => {
+        // 菜单可能尚未创建（例如没有任何启用的站点），此时 update 会报 lastError，静默忽略
+        if (chrome.runtime.lastError) {
+          // 忽略：Cannot find item with id baike-root
+        }
+      },
+    )
+  })
+}
 
 /**
  * 右键菜单点击处理：
