@@ -7,7 +7,7 @@
 import { ref } from 'vue'
 
 /** Toast 消息级别 */
-type ToastType = 'success' | 'error'
+type ToastType = 'success' | 'error' | 'info'
 
 /** 当前显示的消息文本，为空则不显示 */
 const message = ref('')
@@ -19,7 +19,7 @@ let timer: ReturnType<typeof setTimeout> | null = null
 /**
  * 显示一条 Toast
  * @param msg 提示文本
- * @param level 提示级别，success 绿色 / error 红色，默认 success
+ * @param level 提示级别，success 绿色 / error 红色 / info 蓝色，默认 success
  * @param duration 自动消失时间（毫秒），默认 2000
  */
 function show(msg: string, level: ToastType = 'success', duration = 2000): void {
@@ -63,6 +63,9 @@ defineExpose({ show })
 }
 .toast-error {
   background: #d93025;
+}
+.toast-info {
+  background: #1a73e8;
 }
 .toast-fade-enter-active,
 .toast-fade-leave-active {

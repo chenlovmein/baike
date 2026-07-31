@@ -1,11 +1,13 @@
 <script setup lang="ts">
 /**
  * 站点单行编辑组件
- * 职责：渲染一个站点的 5 个单元格（启用/名称/URL/编码/操作），
- * 支持行内编辑，失焦即保存（通过 emit update），
- * 并在 URL 失焦时校验是否包含 %s 占位符。
+ * 设计要点：
+ * - **不再维护本地 ref + watch 副本**：直接通过 computed getter/setter 把输入框和父数据打通，
+ *   避免用户输入到一半时其它字段变化触发 watch 把输入抹掉的竞态
+ * - **输入即触发 emit**：父组件负责防抖后落库，本组件只管把值传上去
+ * - URL 校验只做“红框提示”，不再阻止父组件保存，避免用户以为存了其实没存
  */
-import { ref, watch } from 'vue'
+import { computed } from 'vue'
 import type { Encoding, Site } from '../../types'
 
 const props = defineProps<{
@@ -17,56 +19,33 @@ const emit = defineEmits<{
   (e: 'remove'): void
 }>()
 
-/** 名称字段的本地编辑副本（用于 v-model 绑定） */
-const name = ref(props.site.name)
-/** URL 模板的本地编辑副本 */
-const urlTemplate = ref(props.site.urlTemplate)
-/** 编码下拉选中值 */
-const encoding = ref<Encoding>(props.site.encoding)
-/** URL 是否通过校验（含 %s） */
-const urlValid = ref(true)
+/** 名称双向绑定：读父 site.name，写时 emit update */
+const name = computed<string>({
+  get: () => props.site.name,
+  set: (v) => emit('update', { name: v }),
+})
 
-/** 当父组件传入的 site 变化时，同步本地副本（例如新增一行后初始化） */
-watch(
-  () => props.site,
-  (s) => {
-    name.value = s.name
-    urlTemplate.value = s.urlTemplate
-    encoding.value = s.encoding
-  },
-  { immediate: true },
-)
+/** URL 模板双向绑定 */
+const urlTemplate = computed<string>({
+  get: () => props.site.urlTemplate,
+  set: (v) => emit('update', { urlTemplate: v }),
+})
 
-/**
- * 校验并保存 URL 模板
- * 规则：必须包含 %s；若为空则校验通过（等用户填完再校验）
- */
-function validateAndSaveUrl(): void {
-  if (urlTemplate.value.length === 0) {
-    urlValid.value = true
-    return
-  }
-  if (!urlTemplate.value.includes('%s')) {
-    urlValid.value = false
-    return
-  }
-  urlValid.value = true
-  emit('update', { urlTemplate: urlTemplate.value })
-}
+/** 编码双向绑定 */
+const encoding = computed<Encoding>({
+  get: () => props.site.encoding,
+  set: (v) => emit('update', { encoding: v }),
+})
 
-/** 失焦时保存名称 */
-function saveName(): void {
-  emit('update', { name: name.value })
-}
+/** URL 是否合法：为空视为合法（还没填完），有内容时必须含 %s */
+const urlValid = computed<boolean>(() => {
+  if (props.site.urlTemplate.length === 0) return true
+  return props.site.urlTemplate.includes('%s')
+})
 
-/** 切换启用/禁用，立即保存 */
+/** 切换启用/禁用 */
 function toggleEnabled(): void {
   emit('update', { enabled: !props.site.enabled })
-}
-
-/** 编码下拉变化，立即保存 */
-function changeEncoding(): void {
-  emit('update', { encoding: encoding.value })
 }
 </script>
 
@@ -89,7 +68,6 @@ function changeEncoding(): void {
         type="text"
         placeholder="例如：百度百科"
         class="input name-input"
-        @blur="saveName"
       />
     </td>
 
@@ -101,18 +79,13 @@ function changeEncoding(): void {
         placeholder="https://example.com/search?q=%s"
         class="input url-input"
         :class="{ 'input-error': !urlValid }"
-        @blur="validateAndSaveUrl"
       />
       <span v-if="!urlValid" class="url-error">URL 模板必须包含 %s 占位符</span>
     </td>
 
     <!-- 编码下拉 -->
     <td>
-      <select
-        v-model="encoding"
-        class="select"
-        @change="changeEncoding"
-      >
+      <select v-model="encoding" class="select">
         <option value="utf-8">utf-8</option>
         <option value="gbk">gbk</option>
         <option value="raw">raw</option>

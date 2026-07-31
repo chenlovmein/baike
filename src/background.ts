@@ -13,6 +13,7 @@ import {
   MAX_SELECTION_LENGTH,
   ROOT_MENU_ID,
   STORAGE_KEY_SITES,
+  isCompleteSite,
   loadSites,
   saveSites,
   type Encoding,
@@ -103,7 +104,8 @@ async function doRebuildMenus(): Promise<void> {
   })
 
   const sites = await loadSites()
-  const enabled = sites.filter((s) => s.enabled)
+  // 只用“启用 + 完整（name 非空 + URL 含 %s）”的站点建菜单
+  const enabled = sites.filter((s) => s.enabled && isCompleteSite(s))
 
   // 没有启用的站点则不建菜单（避免出现一个空的“百科查询”父菜单）
   if (enabled.length === 0) return
@@ -155,7 +157,7 @@ async function doRebuildMenus(): Promise<void> {
  */
 chrome.runtime.onInstalled.addListener(async () => {
   try {
-    const result = await chrome.storage.sync.get(STORAGE_KEY_SITES)
+    const result = await chrome.storage.local.get(STORAGE_KEY_SITES)
     const raw = result[STORAGE_KEY_SITES]
     if (!Array.isArray(raw)) {
       // 首次安装 - 写入默认站点
@@ -178,7 +180,7 @@ chrome.runtime.onStartup.addListener(() => {
  * 监听 storage 变化：只在 sites 键变化时才重建菜单，避免未来加了其他配置也触发重建
  */
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName !== 'sync') return
+  if (areaName !== 'local') return
   if (!(STORAGE_KEY_SITES in changes)) return
   rebuildMenus()
 })
@@ -201,7 +203,8 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   if (!keyword) return // 空选中静默返回
 
   const sites = await loadSites()
-  const enabled = sites.filter((s) => s.enabled)
+  // 与 doRebuildMenus 保持同一过滤规则，才能对齐 index
+  const enabled = sites.filter((s) => s.enabled && isCompleteSite(s))
   const site = enabled[index]
   if (!site) {
     console.warn('[baike] 未找到对应站点，配置可能已变更，将重建菜单')
