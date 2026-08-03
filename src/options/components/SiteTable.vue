@@ -3,7 +3,7 @@
  * 站点表格组件
  * 职责：渲染表格头、遍历站点数组、渲染每一行、处理新增/删除/上下移动，把行内变更向上抛
  */
-import { nextTick, ref } from 'vue'
+import { ref } from 'vue'
 import type { Site } from '../../types'
 import SiteRow from './SiteRow.vue'
 
@@ -16,40 +16,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'update:sites', next: Site[], changed?: string[]): void
 }>()
-
-/** 当前鼠标悬停的站点 id（JS 维护，替代 CSS :hover） */
-const hoveredId = ref<string | null>(null)
-/** 最近一次鼠标在表格区域内的坐标，用于排序后重新判定 hover */
-let lastMouseX = 0
-let lastMouseY = 0
-
-/**
- * 表格容器上的 mousemove：记录坐标并根据事件目标更新 hoveredId。
- * 用事件委托，不需要给每行绑监听。
- */
-function onTableMouseMove(e: MouseEvent): void {
-  lastMouseX = e.clientX
-  lastMouseY = e.clientY
-  const tr = (e.target as HTMLElement | null)?.closest('tr[data-site-id]')
-  hoveredId.value = tr?.getAttribute('data-site-id') ?? null
-}
-
-/** 鼠标离开表格区域时清除 hover */
-function onTableMouseLeave(): void {
-  hoveredId.value = null
-}
-
-/**
- * 交换后 DOM 重新排列，但鼠标没有移动，浏览器不会触发新的 mouseenter。
- * 这里用记录的光标坐标重新 elementFromPoint，找到现在位于光标下的行。
- */
-function refreshHoverAfterMove(): void {
-  nextTick(() => {
-    const el = document.elementFromPoint(lastMouseX, lastMouseY) as HTMLElement | null
-    const tr = el?.closest('tr[data-site-id]')
-    hoveredId.value = tr?.getAttribute('data-site-id') ?? null
-  })
-}
 
 /**
  * 更新第 index 行的站点信息
@@ -83,8 +49,6 @@ function moveRow(index: number, direction: -1 | 1): void {
   ;[next[index], next[target]] = [next[target], next[index]]
   // 只标记用户主动点击的这一行，被动交换的另一行不高亮
   emit('update:sites', next, [props.sites[index].id])
-  // DOM 交换后，鼠标光标下方的行可能已经变了，重新判定 hover
-  refreshHoverAfterMove()
 }
 
 /**
@@ -104,11 +68,7 @@ function addRow(): void {
 </script>
 
 <template>
-  <div
-    class="site-table"
-    @mousemove="onTableMouseMove"
-    @mouseleave="onTableMouseLeave"
-  >
+  <div class="site-table">
     <table>
       <thead>
         <tr>
@@ -126,7 +86,6 @@ function addRow(): void {
           :key="site.id"
           :site="site"
           :changed="changedIds.has(site.id)"
-          :hovered="hoveredId === site.id"
           :can-move-up="index > 0"
           :can-move-down="index < sites.length - 1"
           @update="(patch) => updateRow(index, patch)"
@@ -200,9 +159,5 @@ tbody .empty td {
   color: #1a73e8;
   font-size: 13px;
   cursor: pointer;
-  transition: background 0.15s;
-}
-.add-btn:hover {
-  background: #f0f4fa;
 }
 </style>

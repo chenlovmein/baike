@@ -1,0 +1,65 @@
+[
+  {
+    "enabled": true,
+    "encoding": "utf-8",
+    "id": "9182114d-436b-4160-9006-8233f8f5a065",
+    "name": "supjav全部",
+    "urlTemplate": "https://supjav.com/zh/?s=%s"
+  },
+  {
+    "enabled": true,
+    "encoding": "utf-8",
+    "id": "d8b4ca2c-d09b-4868-b537-a3b08197ddd3",
+    "name": "supjav无码",
+    "urlTemplate": "https://supjav.com/zh/category/uncensored-jav?s=%s"
+  },
+  {
+    "enabled": true,
+    "encoding": "utf-8",
+    "id": "fc1fd0a3-7217-4fc5-a896-3a2170935e23",
+    "name": "njavtv",
+    "urlTemplate": "https://njavtv.com/cn/search/%s"
+  },
+  {
+    "enabled": true,
+    "encoding": "utf-8",
+    "id": "baidu",
+    "name": "百度百科",
+    "urlTemplate": "https://baike.baidu.com/item/%s"
+  },
+  {
+    "enabled": true,
+    "encoding": "utf-8",
+    "id": "wikipedia-zh",
+    "name": "维基百科",
+    "urlTemplate": "https://zh.wikipedia.org/wiki/%s"
+  },
+  {
+    "enabled": false,
+    "encoding": "utf-8",
+    "id": "moegirl",
+    "name": "萌娘百科",
+    "urlTemplate": "https://mzh.moegirl.org.cn/%s"
+  },
+  {
+    "enabled": true,
+    "encoding": "utf-8",
+    "id": "880d5396-b9c6-4d05-9e3a-dcca0b7a3855",
+    "name": "",
+    "urlTemplate": ""
+  },
+  {
+    "enabled": true,
+    "encoding": "utf-8",
+    "id": "22241424-9de6-4d43-badb-af7e589054a0",
+    "name": "deepseek",
+    "urlTemplate": "https://chat.deepseek.com/?q=%s"
+  },
+  {
+    "enabled": true,
+    "encoding": "utf-8",
+    "id": "dba66cff-68eb-4978-8cbd-cb35a3aa2ec5",
+    "name": "chatgpt",
+    "urlTemplate": "https://chatgpt.com/?q=%s"
+  }
+]
