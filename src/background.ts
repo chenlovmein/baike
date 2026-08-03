@@ -203,22 +203,13 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
 
 /**
  * 菜单即将展开时触发：把当前选中的文字（截断预览）放进一级菜单标题
- * - rebuildMenus 创建菜单时还没有选中文字，只能创建静态标题“百科查询”
- * - onShown 在每次右键展开菜单的瞬间触发，能拿到 info.selectionText，此时动态 update 标题
- * - 选中文字为空时不更新（菜单本身 contexts:['selection'] 也不会显示，这里仅做防御）
- *
- * 注：chrome.contextMenus.onShown 是 Chrome 116+ 引入的 API，部分 @types/chrome 版本未声明其类型，
- *     这里用类型断言补充最小类型，运行时该 API 存在。
- */
-/**
- * 菜单即将展开时触发：把当前选中的文字（截断预览）放进一级菜单标题
- * - rebuildMenus 创建菜单时还没有选中文字，只能创建静态标题“百科查询”
+ * - rebuildMenus 创建菜单时还没有选中文字，只能创建静态标题"百科查询"
  * - onShown 在每次右键展开菜单的瞬间触发，能拿到 info.selectionText，此时动态 update 标题
  * - 选中文字为空时不更新（菜单本身 contexts:['selection'] 也不会显示，这里仅做防御）
  *
  * 注：chrome.contextMenus.onShown 是 Chrome 116+ 引入的 API，旧版 Chrome 不存在该属性。
  *     类型上用 onShown? 标记可选，运行时再判断是否存在，避免 SW 加载时直接崩溃。
- *     不支持时菜单标题保持静态“百科查询”，查询功能本身不受影响。
+ *     不支持时菜单标题保持静态"百科查询"，查询功能本身不受影响。
  */
 const onShown = (
   chrome.contextMenus as typeof chrome.contextMenus & {
