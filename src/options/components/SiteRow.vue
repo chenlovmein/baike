@@ -12,11 +12,19 @@ import type { Encoding, Site } from '../../types'
 
 const props = defineProps<{
   site: Site
+  canMoveUp: boolean
+  canMoveDown: boolean
+  /** 本行是否处于"已改动未保存"状态，命中时保持与 hover 相同的底色 */
+  changed: boolean
+  /** 鼠标是否悬停在本行（由父组件用 JS 维护，解决排序后 :hover 不更新的问题） */
+  hovered: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'update', patch: Partial<Site>): void
   (e: 'remove'): void
+  (e: 'move-up'): void
+  (e: 'move-down'): void
 }>()
 
 /** 名称双向绑定：读父 site.name，写时 emit update */
@@ -50,7 +58,15 @@ function toggleEnabled(): void {
 </script>
 
 <template>
-  <tr class="site-row" :class="{ 'row-disabled': !site.enabled }">
+  <tr
+    class="site-row"
+    :class="{
+      'row-disabled': !site.enabled,
+      'row-changed': changed,
+      'row-hovered': hovered,
+    }"
+    :data-site-id="site.id"
+  >
     <!-- 启用复选框 -->
     <td class="cell-enabled">
       <input
@@ -59,6 +75,26 @@ function toggleEnabled(): void {
         @change="toggleEnabled"
         class="ckb"
       />
+    </td>
+
+    <!-- 排序：上移 / 下移 -->
+    <td class="cell-sort">
+      <button
+        class="sort-btn"
+        :disabled="!canMoveUp"
+        title="上移"
+        @click="emit('move-up')"
+      >
+        ↑
+      </button>
+      <button
+        class="sort-btn"
+        :disabled="!canMoveDown"
+        title="下移"
+        @click="emit('move-down')"
+      >
+        ↓
+      </button>
     </td>
 
     <!-- 名称编辑 -->
@@ -105,13 +141,51 @@ function toggleEnabled(): void {
   border-bottom: 1px solid #f0f1f3;
   vertical-align: top;
 }
+/* hover 浅蓝底（用 JS 维护的 class，而非 CSS :hover，
+   解决排序交换 DOM 后浏览器在鼠标未移动时不重新计算 :hover 的问题） */
+.site-row.row-hovered td {
+  background: #f0f6ff;
+}
+/* 异动行常驻稍深蓝底，优先级高于 hover，保持已改动状态可辨 */
+.site-row.row-changed td {
+  background: #e3eefd;
+}
 .row-disabled td {
   opacity: 0.55;
 }
 .cell-enabled,
-.cell-action {
+.cell-action,
+.cell-sort {
   text-align: center;
   vertical-align: middle !important;
+}
+.cell-sort {
+  white-space: nowrap;
+}
+.sort-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin: 0 2px;
+  border: 1px solid #d0d4da;
+  border-radius: 4px;
+  background: #f8f9fb;
+  color: #333;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.sort-btn:hover:not(:disabled) {
+  background: #e8f0fe;
+  border-color: #1a73e8;
+  color: #1a73e8;
+}
+.sort-btn:disabled {
+  background: #f0f0f0;
+  border-color: #e0e0e0;
+  color: #bbb;
+  cursor: not-allowed;
 }
 .ckb {
   cursor: pointer;

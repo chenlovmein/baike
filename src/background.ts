@@ -63,11 +63,12 @@ function buildUrl(urlTemplate: string, encodedKeyword: string): string {
 }
 
 /**
- * 生成子菜单项 id：格式 baike-site-{index}
- * 用 index 而不是 name，避免用户改名后菜单点击回调映射错乱
+ * 生成子菜单项 id：格式 baike-site-{siteId}
+ * 用站点持久 id 而不是索引，避免排序后菜单点击映射到错误站点，
+ * 也不依赖 doRebuildMenus 与 onClicked 使用完全相同的过滤规则来对齐 index。
  */
-function siteMenuId(index: number): string {
-  return `baike-site-${index}`
+function siteMenuId(siteId: string): string {
+  return `baike-site-${siteId}`
 }
 
 /** 一级菜单标题里预览选中文字的最大字符数，超出则截断加省略号，避免菜单被撑得过宽 */
@@ -142,11 +143,10 @@ async function doRebuildMenus(): Promise<void> {
   )
 
   // 顺序创建子菜单项，单条失败跳过继续
-  for (let i = 0; i < enabled.length; i++) {
-    const site = enabled[i]
+  for (const site of enabled) {
     chrome.contextMenus.create(
       {
-        id: siteMenuId(i),
+        id: siteMenuId(site.id),
         parentId: ROOT_MENU_ID,
         // 二级菜单只显示百科名，选中文字的预览放在一级菜单标题里
         title: site.name,
@@ -245,8 +245,8 @@ if (onShown) {
 
 /**
  * 右键菜单点击处理：
- * - 解析出用户点了哪个站点
- * - 从 storage 拿到最新配置（不能信任菜单 id 的隐含快照）
+ * - 从菜单 id 解析出站点 id，直接定位站点
+ * - 从 storage 拿到最新配置（不能信任菜单创建时的快照）
  * - 清洗选中文字、编码、拼 URL、新前台标签打开
  */
 chrome.contextMenus.onClicked.addListener(async (info) => {
@@ -254,18 +254,17 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   const prefix = 'baike-site-'
   if (!menuId.startsWith(prefix)) return
 
-  const index = Number(menuId.slice(prefix.length))
-  if (!Number.isInteger(index) || index < 0) return
+  const siteId = menuId.slice(prefix.length)
+  if (!siteId) return
 
   const keyword = sanitizeSelection(info.selectionText)
   if (!keyword) return // 空选中静默返回
 
   const sites = await loadSites()
-  // 与 doRebuildMenus 保持同一过滤规则，才能对齐 index
-  const enabled = sites.filter((s) => s.enabled && isCompleteSite(s))
-  const site = enabled[index]
-  if (!site) {
-    console.warn('[baike] 未找到对应站点，配置可能已变更，将重建菜单')
+  // 用稳定 id 定位，不依赖索引对齐
+  const site = sites.find((s) => s.id === siteId)
+  if (!site || !site.enabled || !isCompleteSite(site)) {
+    console.warn('[baike] 未找到对应站点或站点已禁用/不完整，将重建菜单')
     await rebuildMenus()
     return
   }
